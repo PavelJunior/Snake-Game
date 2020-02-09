@@ -21,11 +21,12 @@ let snake = [];
 let food = {};
 let score = 0;
 let bestScore = 0;
-let d = "DOWN";
-let prevD = "DOWN";
+let direction = "DOWN";
+let prevDirection = "DOWN";
+let gameOver = false;
+let newBestScore = false;
+let game;
 
-startGame();
-setInterval(draw, TIMEOUT);
 
 function draw(){
     //draw header
@@ -49,7 +50,7 @@ function draw(){
 
     //draw snake
     for(let i = 0; i < snake.length; i++){
-        ctx.fillStyle = (i == 0) ? SNAKE_HEAD : SNAKE_BODY;
+        ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE_BODY;
         ctx.fillRect(snake[i].x, snake[i].y + TOPOFFSET, CELL, CELL);
     }
 
@@ -60,12 +61,12 @@ function draw(){
     let snakeY = snake[0].y;
 
     //get next cell for head
-    if(d === "LEFT") snakeX -= CELL;
-    if(d === "UP") snakeY -= CELL;
-    if(d === "RIGHT") snakeX += CELL;
-    if(d === "DOWN") snakeY += CELL;
+    if(direction === "LEFT") snakeX -= CELL;
+    else if(direction === "UP") snakeY -= CELL;
+    else if(direction === "RIGHT") snakeX += CELL;
+    else if(direction === "DOWN") snakeY += CELL;
 
-    prevD = d;
+    prevDirection = direction;
 
     //make snake able to go throw wall and appear on the opposite side
     snakeX = snakeX % WIDTH;
@@ -76,8 +77,9 @@ function draw(){
     //check if the snake ate foot
     if(snakeX === food.x && snakeY === food.y){
         score++;
+        if(score > bestScore) newBestScore = true;
         if(bestScore < score) bestScore = score;
-        food = makeFood(snake);
+        food = makeFood(snake, snakeX, snakeY);
     } else {
         snake.pop();
     }
@@ -89,7 +91,30 @@ function draw(){
 
     //check if the snake ate itself
     if(collision(newHead, snake)){
-        startGame();
+        gameOver = true;
+        clearInterval(game);
+        ctx.fillStyle = 'rgba(0,0,0, 0.5)';
+        ctx.fillRect(50, 220, 500, 250);
+        ctx.fillStyle = 'white';
+        ctx.font = '60px Arial';
+        ctx.fillText("GAME OVER", 120, 300);
+        if(newBestScore){
+            newBestScore = false;
+            ctx.font = '35px Arial';
+            ctx.fillText("New record: " + score, 200, 360);
+        } else {
+            ctx.font = '25px Arial';
+            ctx.fillText("Your score: " + score, 90, 350);
+            ctx.fillText("Best score: " + bestScore, 360, 350);
+        }
+        ctx.font = '27px Arial';
+        ctx.fillText("Press enter to try again", 160, 420);
+        document.addEventListener('keydown', (e) => {
+            if(e.key === "Enter" && gameOver){
+                startGame();
+                gameOver = false;
+            }
+        });
     }
 
     snake.unshift(newHead);
@@ -100,6 +125,9 @@ function startGame(){
     snake = makeSnake();
     food = makeFood(snake);
     score = 0;
+    direction = "DOWN";
+    clearInterval(game);
+    game = setInterval(draw, TIMEOUT);
 }
 
 //make starting snake
@@ -111,8 +139,8 @@ function makeSnake(){
     return snake;
 }
 
-//make food and check that food didn't created in the snake body
-function makeFood(snake){
+//make food and check that food didn't created on the snake body
+function makeFood(snake, nextHeadX = null, nextHeadY = null){
     let food;
     let onSnake = true;
 
@@ -122,8 +150,8 @@ function makeFood(snake){
             x : Math.floor(Math.random() * 15) * CELL,
             y : Math.floor(Math.random() * 15) * CELL
         };
-        for(let i = 0; i < snake.length; i++){
-            if(snake[i].x === food.x && snake[i].y === food.y){
+        for(let i = 0; i < snake.length-1; i++){
+            if(snake[i].x === food.x && snake[i].y === food.y || food.x === nextHeadX && food.y === nextHeadY){
                 onSnake = true
             }
         }
@@ -142,15 +170,16 @@ function collision(head, array){
 }
 
 //get current direction
-document.addEventListener('keydown', direction);
-function direction(event){
-    if(event.key === 'ArrowLeft' && prevD !== "RIGHT"){
-        d = "LEFT";
-    } else if(event.key === 'ArrowUp' && prevD !== "DOWN"){
-        d = "UP";
-    } else if(event.key === 'ArrowRight' && prevD !== "LEFT"){
-        d = "RIGHT";
-    } else if(event.key === 'ArrowDown' && prevD !== "UP"){
-        d = "DOWN";
+document.addEventListener('keydown', getDirection);
+
+function getDirection(event){
+    if((event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') && prevDirection !== "RIGHT"){
+        direction = "LEFT";
+    } else if((event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') && prevDirection !== "DOWN"){
+        direction = "UP";
+    } else if((event.key === 'ArrowRight'  || event.key.toLowerCase() === 'd') && prevDirection !== "LEFT"){
+        direction = "RIGHT";
+    } else if((event.key === 'ArrowDown' || event.key.toLowerCase() === 's') && prevDirection !== "UP"){
+        direction = "DOWN";
     }
 }
